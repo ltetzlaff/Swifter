@@ -150,6 +150,12 @@ public class Swifter {
                               success: JSONSuccessHandler? = nil,
                               failure: HTTPRequest.FailureHandler? = nil) -> HTTPRequest {
         
+        #if os(iOS)
+        let resultQueue = DispatchQueue.main
+        #else
+        let resultQueue = DispatchQueue.global()
+        #endif
+
         let jsonDownloadProgressHandler: HTTPRequest.DownloadProgressHandler = { [weak self] data, _, _, response in
             if let progress = downloadProgress {
                 self?.handleStreamProgress(data: data, response: response, handler: progress)
@@ -160,11 +166,11 @@ public class Swifter {
             DispatchQueue.global(qos: .utility).async {
                 do {
                     let jsonResult = try JSON.parse(jsonData: data)
-                    DispatchQueue.main.async {
+                    resultQueue.async {
                         success?(jsonResult, response)
                     }
                 } catch {
-                    DispatchQueue.main.async {
+                    resultQueue.async {
                         if case 200...299 = response.statusCode, data.isEmpty {
                             success?(JSON("{}"), response)
                         } else {
